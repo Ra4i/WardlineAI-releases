@@ -1,88 +1,53 @@
 # WardlineAI
 
-An anonymous, free, 24/7 support app for people at risk of addiction and for their parents. Android client (.NET MAUI), ASP.NET Core API, a Python AI service and a locally hosted Bulgarian language model.
+Анонимно, безплатно приложение за подкрепа денонощно за хора, които са изложени на риск от зависимост, и за техните родители. Това е **демо версия за Android** на портфолио проект.
 
-> **Not a medical device and not a substitute for professional help.** It is a portfolio project. If you or someone else is in danger, call 112 or a local crisis line.
+> **Не е медицинско изделие и не замества специалист.** Ако си в криза или в опасност, обади се на **112** или на местна кризисна линия.
 
-## What it does
+## Свали
 
-- **Anonymous by design.** No name, phone number or email is asked for. The app starts an anonymous session; there is deliberately no password reset because there is no contact detail that could prove ownership of an account.
-- **Two modes**, chosen at onboarding: "Имам проблем" (a person at risk) and "Аз съм родител" (a parent).
-- **AI companion chat** with streaming replies, running on a local model (no third-party LLM API, so conversations do not leave the server).
-- **Recovery diary** with mood, craving, triggers and what helped; encrypted notes and a pattern summary once there is enough data.
-- **Risk prediction and a personal action plan** ("Първата крачка") with small daily tasks, plus progress tracking.
-- **SOS**: crisis resources and trusted contacts.
-- **Gamification**: points, levels, badges and daily challenges.
-- **Education content** managed from a small web admin page (`/admin`) without a redeploy.
-- **Optional parents' peer chat** (parent mode only, switchable off with one setting; off in the demo deployment).
+### [Свали WardlineAI.apk](https://github.com/Ra4i/WardlineAI-releases/releases/latest/download/WardlineAI.apk)
 
-## Architecture
+Всички версии: [Releases](https://github.com/Ra4i/WardlineAI-releases/releases).
 
-```mermaid
-flowchart LR
-    App["MAUI app<br/>(Android)"] -->|HTTPS, WebSocket| Caddy[Caddy<br/>TLS, ports 80/443]
-    Caddy --> API["ASP.NET Core API<br/>REST + SignalR"]
-    API --> DB[(PostgreSQL)]
-    API -->|X-Api-Key| AI["AI service<br/>FastAPI"]
-    AI --> Ollama["Ollama<br/>BgGPT Gemma 3 4B"]
-```
+### Как се инсталира
+1. Отвори линка от Android телефона си и свали файла.
+2. Отвори изтегления `WardlineAI.apk`. Android ще поиска разрешение да инсталира от непознат източник. Разреши го за този файл.
+3. Стартирай приложението и избери режим.
 
-Only Caddy publishes ports. The database, the AI service and the model server are reachable only inside the Docker network.
+Приложението е подписано с постоянен ключ. Нови версии се инсталират върху старата и запазват данните ти.
 
-| Part | Technology |
-| --- | --- |
-| Client | .NET MAUI (Android, iOS target) |
-| API | ASP.NET Core (net10.0), EF Core, Npgsql, SignalR, JWT |
-| Database | PostgreSQL 16, migrations applied at startup |
-| AI service | Python 3.12, FastAPI, scikit-learn, httpx |
-| Model | `INSAIT-Institute/BgGPT-Gemma-3-4B-IT-GGUF` (Q4_K_M) served by Ollama |
-| Deployment | Docker Compose, Caddy with Let's Encrypt, CI workflows in `.github/workflows` |
+## Какво прави
 
-## Design decisions worth knowing
+- **Анонимно.** Не иска име, телефон или имейл. Няма и възстановяване на парола, защото няма с какво да се докаже, че профилът е твой.
+- **Два режима:** "Имам проблем" и "Аз съм родител".
+- **Чат с AI спътник** с отговори, които се показват дума по дума. Моделът работи на собствен сървър, а не през външна услуга.
+- **Дневник на възстановяването:** настроение, желание за употреба, тригери и какво е помогнало. След достатъчно записи показва модели в данните.
+- **Лична програма "Първата крачка"** с малки ежедневни задачи и следене на напредъка.
+- **SOS:** кризисни контакти и доверени хора. Може да ползва еднократно местоположение, ако го разрешиш.
+- **Точки, нива, значки и ежедневни предизвикателства.**
+- **Образователно съдържание.**
 
-- **Crisis and harm-related messages never reach the model.** They are answered from reviewed fixed text.
-- **A reply bank is the safety net.** If the model does not produce a first token within a deadline, the user gets a fixed, safe answer instead of a hanging chat.
-- **The AI service is an internal service.** The API owns authentication and rate limits; the AI service only accepts requests carrying a shared secret.
-- **Sensitive content is encrypted in the application layer** (AES-GCM): chat messages, conversation summaries, diary notes and trusted contacts. The encryption key lives only in the server's environment and is never rotated, so a database dump without it is unreadable.
-- **Admin tokens are short-lived** (60 minutes) and there is no sign-up or "promote" endpoint: the admin account is created by a one-off command on the server.
-- **Secrets are generated on the server.** Nothing real is committed; `.env` is git-ignored and `.env.production.example` documents every value.
+## Важно да знаеш
 
-## Measured performance
+- **Това е демо.** Не въвеждай реални лични или чувствителни данни. Ползвай измислени.
+- **Чатът е бавен.** Моделът работи на процесор, така че първият отговор може да отнеме от няколко секунди до около минута. Понякога вместо модела получаваш готов, безопасен отговор.
+- **Сървърът е малък** и може да е бавен или изключен.
+- Чатът и бележките в дневника се пазят шифровано на сървъра. Част от полетата, например стойностите за настроение, не са шифровани.
+- Режимът за родители се избира от самия потребител и не се проверява.
 
-The model runs on CPU only. On a 6 vCPU / 12 GB VPS, a 10-turn Bulgarian conversation through the public HTTPS and WebSocket path gave (`scripts/bench-chat.py`, 6 threads):
+## Обратна връзка
 
-| | |
-| --- | --- |
-| First token, median | 9.4 s |
-| First token, slowest | 52.5 s |
-| Whole reply, median | 30.5 s |
-| Answered by the model | 10 of 10 |
+Намери ли грешка или имаш идея, отвори [Issue](https://github.com/Ra4i/WardlineAI-releases/issues) в това репо. Не пиши там лични данни.
 
-The slow turns are those where the prompt cache is lost. This is a single-user benchmark; several simultaneous conversations would queue behind one model.
+Изходният код е в частно репо.
 
-## Limitations
+---
 
-- A screening and support aid, not a clinical instrument; it does not diagnose.
-- Parent mode is self-declared and not verified.
-- CPU inference is slow; there is one model and it handles one request at a time.
-- Some diary fields (for example mood and craving values) are stored as plain columns; the free-text content is encrypted.
-- No password reset, by design.
+## English
 
-## Repository layout
+**WardlineAI** is an anonymous, free, 24/7 support app for people at risk of addiction and for their parents, built as a portfolio project. This is a **demo build for Android**. It is **not a medical device and not a substitute for professional help**; if you are in danger, call 112 or a local crisis line.
 
-```
-backend/WardlineAI.Api/   ASP.NET Core API, migrations, /admin static page
-ai-service/               FastAPI service, risk prediction, calls Ollama
-client/WardlineAI.Maui/   Android / iOS app
-deploy/                   production guide and server runbook
-scripts/                  chat benchmark and demo scripts
-docker-compose*.yml       development and production stacks
-```
+**Install:** download the APK from the link above, open it, and allow installation from an unknown source for that file. Do not enter real personal or sensitive data. The chat runs a local language model on a CPU server, so replies can take from a few seconds to about a minute, and the server may be slow or offline.
 
-## Running it
-
-Docker Compose is the supported way. `docker compose up -d` starts PostgreSQL, the AI service, Ollama and the API. For a production-style server with TLS, see `deploy/DEPLOY.md`.
-
-## Releases
-
-A signed demo APK is published in the public [WardlineAI-releases](https://github.com/Ra4i/WardlineAI-releases) repository.
+The app asks for no name, phone number or email, has a two-mode onboarding (person at risk, parent), an AI companion chat, a recovery diary with pattern summaries, a personal daily action plan, an SOS screen with crisis contacts, and light gamification. Chat messages and diary notes are encrypted on the server. The source code is in a private repository.
